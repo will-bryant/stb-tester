@@ -615,9 +615,6 @@ class TestFailure(Exception)
     or failures in the system under test that you wish to visually classify
     as different from a test failure).
 
-class TestError(Exception)
-    The test failed but it wasn't the fault of the system under test.
-
 
 .. <end python docs>
 

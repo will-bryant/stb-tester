@@ -369,10 +369,10 @@ def detect_match(image, timeout_secs=10, noise_threshold=None,
 
     template_name = _find_path(image)
     if not os.path.isfile(template_name):
-        raise TestError("No such template file: %s" % image)
+        raise ValueError("No such template file: %s" % image)
     template = cv2.imread(template_name, cv2.CV_LOAD_IMAGE_COLOR)
     if template is None:
-        raise TestError("Failed to load template file: %s" % template_name)
+        raise RuntimeError("Failed to load template file: %s" % template_name)
 
     debug("Searching for " + template_name)
 
@@ -435,10 +435,10 @@ def detect_motion(timeout_secs=10, noise_threshold=None, mask=None):
         mask_ = _find_path(mask)
         debug("Using mask %s" % mask_)
         if not os.path.isfile(mask_):
-            raise TestError("No such mask file: %s" % mask)
+            raise ValueError("No such mask file: %s" % mask)
         mask_image = cv2.imread(mask_, cv2.CV_LOAD_IMAGE_GRAYSCALE)
         if mask_image is None:
-            raise TestError("Failed to load mask file: %s" % mask_)
+            raise RuntimeError("Failed to load mask file: %s" % mask_)
 
     previous_frame_gray = None
     log = functools.partial(_log_image, directory="stbt-debug/detect_motion")
@@ -450,7 +450,7 @@ def detect_motion(timeout_secs=10, noise_threshold=None, mask=None):
         if previous_frame_gray is None:
             if (mask_image is not None and
                     mask_image.shape[:2] != frame.shape[:2]):
-                raise TestError(
+                raise ValueError(
                     "The dimensions of the mask '%s' %s don't match the video "
                     "frame %s" % (mask_, mask_image.shape, frame.shape))
             previous_frame_gray = frame_gray
@@ -744,7 +744,14 @@ def debug(msg):
 class TestError(Exception):
     """The test failed but it wasn't the fault of the system under test.
     """
-    pass
+    def __init__(self, *args):
+        super(TestError, self).__init__(*args)
+        warnings.warn(
+            "'TestError' is deprecated and will be removed in a future "
+            "release of stb-tester. Please use a more descriptive exception "
+            "instead (any exception that isn't stbt.TestFailure, including "
+            "built-in exceptions, counts as a test error).",
+            DeprecationWarning, stacklevel=2)
 
 
 class TestFailure(Exception):
@@ -806,7 +813,7 @@ class MotionTimeout(TestFailure):
             self.timeout_secs)
 
 
-class ConfigurationError(TestError):
+class ConfigurationError(Exception):
     pass
 
 
@@ -973,7 +980,7 @@ class Display:
             self.novideo = True
             raise NoVideo("No video")
         if isinstance(gst_buffer, Exception):
-            raise TestError(str(gst_buffer))
+            raise gst_buffer
 
         return gst_buffer
 
@@ -1065,7 +1072,7 @@ class Display:
         assert message.type == gst.MESSAGE_ERROR
         err, dbg = message.parse_error()
         self.tell_user_thread(
-            TestError("%s: %s\n%s\n" % (err, err.message, dbg)))
+            RuntimeError("%s: %s\n%s\n" % (err, err.message, dbg)))
         _mainloop.quit()
 
     @staticmethod
@@ -1925,15 +1932,15 @@ def _read_lircd_reply(stream):
             if line == "END" and "SEND_ONCE" in reply[1]:
                 break
     except socket.timeout:
-        raise TestError(
+        raise RuntimeError(
             "Timed out: No reply from LIRC remote control within %d seconds"
             % stream.gettimeout())
     if not "SUCCESS" in reply:
         if "ERROR" in reply and len(reply) >= 6 and reply[3] == "DATA":
             num_data_lines = int(reply[4])
-            raise TestError("LIRC remote control returned error: %s"
-                            % " ".join(reply[5:5 + num_data_lines]))
-        raise TestError("LIRC remote control returned unknown error")
+            raise RuntimeError("LIRC remote control returned error: %s"
+                               % " ".join(reply[5:5 + num_data_lines]))
+        raise RuntimeError("LIRC remote control returned unknown error")
 
 
 def _find_path(image):
