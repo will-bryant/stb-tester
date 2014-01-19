@@ -369,10 +369,10 @@ def detect_match(image, timeout_secs=10, noise_threshold=None,
 
     template_name = _find_path(image)
     if not os.path.isfile(template_name):
-        raise UITestError("No such template file: %s" % image)
+        raise TestError("No such template file: %s" % image)
     template = cv2.imread(template_name, cv2.CV_LOAD_IMAGE_COLOR)
     if template is None:
-        raise UITestError("Failed to load template file: %s" % template_name)
+        raise TestError("Failed to load template file: %s" % template_name)
 
     debug("Searching for " + template_name)
 
@@ -435,10 +435,10 @@ def detect_motion(timeout_secs=10, noise_threshold=None, mask=None):
         mask_ = _find_path(mask)
         debug("Using mask %s" % mask_)
         if not os.path.isfile(mask_):
-            raise UITestError("No such mask file: %s" % mask)
+            raise TestError("No such mask file: %s" % mask)
         mask_image = cv2.imread(mask_, cv2.CV_LOAD_IMAGE_GRAYSCALE)
         if mask_image is None:
-            raise UITestError("Failed to load mask file: %s" % mask_)
+            raise TestError("Failed to load mask file: %s" % mask_)
 
     previous_frame_gray = None
     log = functools.partial(_log_image, directory="stbt-debug/detect_motion")
@@ -450,7 +450,7 @@ def detect_motion(timeout_secs=10, noise_threshold=None, mask=None):
         if previous_frame_gray is None:
             if (mask_image is not None and
                     mask_image.shape[:2] != frame.shape[:2]):
-                raise UITestError(
+                raise TestError(
                     "The dimensions of the mask '%s' %s don't match the video "
                     "frame %s" % (mask_, mask_image.shape, frame.shape))
             previous_frame_gray = frame_gray
@@ -741,23 +741,35 @@ def debug(msg):
             "%s: %s\n" % (os.path.basename(sys.argv[0]), str(msg)))
 
 
-class UITestError(Exception):
-    """The test script had an unrecoverable error."""
-    pass
-
-
-class UITestFailure(Exception):
-    """The test failed because the system under test didn't behave as expected.
+class TestError(Exception):
+    """The test failed but it wasn't the fault of the system under test.
     """
     pass
 
 
-class NoVideo(UITestFailure):
+class TestFailure(Exception):
+    """The test failed because the system under test didn't behave as expected.
+
+    If you are running your test scripts with stb-tester's batch runner, the
+    reports it generates will show test failures (that is, unhandled
+    `TestFailure` exceptions) as red results, and unhandled exceptions of any
+    other type as yellow results (errors in test logic, test infrastructure,
+    or failures in the system under test that you wish to visually classify
+    as different from a test failure).
+    """
+    pass
+
+
+UITestError = TestError  # For backwards compatibility
+UITestFailure = TestFailure  # For backwards compatibility
+
+
+class NoVideo(TestFailure):
     """No video available from the source pipeline."""
     pass
 
 
-class MatchTimeout(UITestFailure):
+class MatchTimeout(TestFailure):
     """
     * `screenshot`: An OpenCV image from the source video when the search
       for the expected image timed out.
@@ -775,7 +787,7 @@ class MatchTimeout(UITestFailure):
             self.expected, self.timeout_secs)
 
 
-class MotionTimeout(UITestFailure):
+class MotionTimeout(TestFailure):
     """
     * `screenshot`: An OpenCV image from the source video when the search
       for motion timed out.
@@ -794,7 +806,7 @@ class MotionTimeout(UITestFailure):
             self.timeout_secs)
 
 
-class ConfigurationError(UITestError):
+class ConfigurationError(TestError):
     pass
 
 
@@ -961,7 +973,7 @@ class Display:
             self.novideo = True
             raise NoVideo("No video")
         if isinstance(gst_buffer, Exception):
-            raise UITestError(str(gst_buffer))
+            raise TestError(str(gst_buffer))
 
         return gst_buffer
 
@@ -1053,7 +1065,7 @@ class Display:
         assert message.type == gst.MESSAGE_ERROR
         err, dbg = message.parse_error()
         self.tell_user_thread(
-            UITestError("%s: %s\n%s\n" % (err, err.message, dbg)))
+            TestError("%s: %s\n%s\n" % (err, err.message, dbg)))
         _mainloop.quit()
 
     @staticmethod
@@ -1597,7 +1609,7 @@ class VideoTestSrcControl:
                 18, "ball",
                 19, "smpte100",
                 20, "bar"]:
-            raise UITestFailure(
+            raise TestFailure(
                 'Key "%s" not valid for the "test" control' % key)
         self.videosrc.props.pattern = key
         debug("Pressed %s" % key)
@@ -1913,15 +1925,15 @@ def _read_lircd_reply(stream):
             if line == "END" and "SEND_ONCE" in reply[1]:
                 break
     except socket.timeout:
-        raise UITestError(
+        raise TestError(
             "Timed out: No reply from LIRC remote control within %d seconds"
             % stream.gettimeout())
     if not "SUCCESS" in reply:
         if "ERROR" in reply and len(reply) >= 6 and reply[3] == "DATA":
             num_data_lines = int(reply[4])
-            raise UITestError("LIRC remote control returned error: %s"
-                              % " ".join(reply[5:5 + num_data_lines]))
-        raise UITestError("LIRC remote control returned unknown error")
+            raise TestError("LIRC remote control returned error: %s"
+                            % " ".join(reply[5:5 + num_data_lines]))
+        raise TestError("LIRC remote control returned unknown error")
 
 
 def _find_path(image):

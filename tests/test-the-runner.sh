@@ -27,8 +27,8 @@ test_runner_runs_until_failure() {
     [[ $(cat testruns | wc -l) -eq 2 ]] || fail "Expected 2 test runs"
     grep -q success $(head -1 testruns)/failure-reason ||
         fail "Expected 1st testrun to succeed"
-    grep -q UITestError latest/failure-reason ||
-        fail "Expected 2nd testrun to fail with 'UITestError'"
+    grep -q TestError latest/failure-reason ||
+        fail "Expected 2nd testrun to fail with 'TestError'"
 }
 
 test_runner_continues_after_uninteresting_failure() {
@@ -39,8 +39,8 @@ test_runner_continues_after_uninteresting_failure() {
     [[ $(cat testruns | wc -l) -eq 3 ]] || fail "Expected 3 test runs"
     grep -q success $(head -1 testruns)/failure-reason ||
         fail "Expected 1st testrun to succeed"
-    grep -q UITestError $(sed -n 2p testruns)/failure-reason ||
-        fail "Expected 2nd testrun to fail with 'UITestError'"
+    grep -q TestError $(sed -n 2p testruns)/failure-reason ||
+        fail "Expected 2nd testrun to fail with 'TestError'"
     grep -q MatchTimeout latest/failure-reason ||
         fail "Expected 3rd testrun to fail with 'MatchTimeout'"
 }
@@ -271,9 +271,9 @@ test_runner_results_server() {
 
     "$srcdir"/extra/runner/run "$testdir"/test.py
     rundir=$(ls -d 20* | tail -1)
-    assert grep -q UITestError $rundir/failure-reason
-    assert grep -q UITestError $rundir/index.html
-    assert grep -q UITestError index.html
+    assert grep -q TestError $rundir/failure-reason
+    assert grep -q TestError $rundir/index.html
+    assert grep -q TestError index.html
 
     "$srcdir"/extra/runner/server --debug 127.0.0.1:5787 &
     server=$!
@@ -290,7 +290,7 @@ test_runner_results_server() {
     assert grep -q "manual failure reason" index.html
 
     curl --silent --show-error \
-        -F "value=UITestError: Not the system-under-test's fault" \
+        -F "value=TestError: Not the system-under-test's fault" \
         http://127.0.0.1:5787/$rundir/failure-reason || fail 'Got HTTP failure'
     expect_runner_to_say "POST /$rundir/failure-reason"
     wait_for_report $server

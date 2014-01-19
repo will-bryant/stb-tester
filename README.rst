@@ -193,7 +193,7 @@ EXIT STATUS
 0 on success; 1 on test script failure; 2 on any other error.
 
 Test scripts indicate **failure** (the system under test didn't behave as
-expected) by raising an instance of `stbt.UITestFailure` (or a subclass
+expected) by raising an instance of `stbt.TestFailure` (or a subclass
 thereof). Any other exception is considered a test **error** (a logic error in
 the test script, an error in the system under test's environment, or an error
 in the test framework itself).
@@ -590,26 +590,33 @@ class MotionResult
     * `timestamp`: Video stream timestamp.
     * `motion`: Boolean result.
 
-class MatchTimeout(UITestFailure)
+class MatchTimeout(TestFailure)
     * `screenshot`: An OpenCV image from the source video when the search
       for the expected image timed out.
     * `expected`: Filename of the image that was being searched for.
     * `timeout_secs`: Number of seconds that the image was searched for.
 
-class MotionTimeout(UITestFailure)
+class MotionTimeout(TestFailure)
     * `screenshot`: An OpenCV image from the source video when the search
       for motion timed out.
     * `mask`: Filename of the mask that was used (see `wait_for_motion`).
     * `timeout_secs`: Number of seconds that motion was searched for.
 
-class NoVideo(UITestFailure)
+class NoVideo(TestFailure)
     No video available from the source pipeline.
 
-class UITestFailure(Exception)
+class TestFailure(Exception)
     The test failed because the system under test didn't behave as expected.
 
-class UITestError(Exception)
-    The test script had an unrecoverable error.
+    If you are running your test scripts with stb-tester's batch runner, the
+    reports it generates will show test failures (that is, unhandled
+    `TestFailure` exceptions) as red results, and unhandled exceptions of any
+    other type as yellow results (errors in test logic, test infrastructure,
+    or failures in the system under test that you wish to visually classify
+    as different from a test failure).
+
+class TestError(Exception)
+    The test failed but it wasn't the fault of the system under test.
 
 
 .. <end python docs>
