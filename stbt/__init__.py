@@ -1819,13 +1819,13 @@ class Display(object):
         if texts or matches:  # Draw the annotations.
             sample = _gst_sample_make_writable(sample)
             with _numpy_from_sample(sample) as img:
-                for i in range(len(texts)):
-                    text, duration, end_time = texts[len(texts) - i - 1]
+                for i, (text, duration, end_time) in enumerate(reversed(texts)):
+                    origin = (10, (i + 1) * 30)
                     start_time = end_time - (duration * Gst.SECOND)
                     percent_complete = (
                         float(now - start_time) / (end_time - start_time))
-                    origin = (10, (i + 1) * 30)
-                    _draw_text(img, text, origin, percent_complete)
+                    color = ((int(255 * (1 - percent_complete)),) * 3)
+                    _draw_text(img, text, origin, color)
                 for match_result in matches:
                     _draw_match(img, match_result.region, match_result.match)
 
@@ -1923,7 +1923,7 @@ class Display(object):
                 "is still alive!" if self.mainloop_thread.isAlive() else "ok"))
 
 
-def _draw_text(numpy_image, text, origin, percent_complete):
+def _draw_text(numpy_image, text, origin, color):
     (width, height), _ = cv2.getTextSize(
         text, fontFace=cv2.FONT_HERSHEY_TRIPLEX, fontScale=1.0, thickness=1)
     cv2.rectangle(
@@ -1931,7 +1931,7 @@ def _draw_text(numpy_image, text, origin, percent_complete):
         thickness=cv2.cv.CV_FILLED, color=(0, 0, 0))
     cv2.putText(
         numpy_image, text, origin, cv2.FONT_HERSHEY_TRIPLEX, fontScale=1.0,
-        color=((int(255 * (1 - percent_complete)),) * 3))
+        color=color)
 
 
 def _draw_match(numpy_image, region, match_, thickness=3):
