@@ -1819,8 +1819,8 @@ class Display(object):
         if texts or matches:  # Draw the annotations.
             sample = _gst_sample_make_writable(sample)
             with _numpy_from_sample(sample) as img:
-                for i, (text, duration, end_time) in enumerate(reversed(texts)):
-                    origin = (10, (i + 1) * 30)
+                for i, (text, duration, end_time) in enumerate(texts):
+                    origin = (10, img.shape[0] + (i - len(texts)) * 30)
                     start_time = end_time - (duration * Gst.SECOND)
                     percent_complete = (
                         float(now - start_time) / (end_time - start_time))
