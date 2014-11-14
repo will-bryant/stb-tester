@@ -151,6 +151,12 @@ PYTHON_FILES = $(shell (git ls-files '*.py' && \
            git grep --name-only -E '^\#!/usr/bin/(env python|python)') \
            | sort | uniq)
 
+integrationtest_files = $(shell \
+            git ls-files 'tests/test-*.sh' | \
+            grep -v $(if $(filter yes,$(enable_stbt_camera)), \
+                        keep-all-the-tests, \
+                        tests/test-camera.sh))
+
 check: check-pylint check-nosetests check-integrationtests check-bashcompletion
 check-nosetests: tests/ocr/menu.png
 	# Workaround for https://github.com/nose-devs/nose/issues/49:
@@ -162,7 +168,7 @@ check-nosetests: tests/ocr/menu.png
 check-integrationtests: install-for-test
 	export PATH="$$PWD/tests/test-install/bin:$$PATH" \
 	       GST_PLUGIN_PATH=$$PWD/tests/test-install/lib/gstreamer-1.0/plugins:$$GST_PLUGIN_PATH && \
-	grep -hEo '^test_[a-zA-Z0-9_]+' tests/test-*.sh |\
+	grep -hEo '^test_[a-zA-Z0-9_]+' $(integrationtest_files) |\
 	$(parallel) tests/run-tests.sh -i
 check-hardware: install-for-test
 	export PATH="$$PWD/tests/test-install/bin:$$PATH" && \
